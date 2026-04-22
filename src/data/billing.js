@@ -1,0 +1,96 @@
+export const plans = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 12000,
+    maxMembers: 100,
+    maxNodes: 5,
+    features: ['meetings', 'communication'],
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    price: 25000,
+    maxMembers: 500,
+    maxNodes: 25,
+    features: ['meetings', 'attendance', 'referrals', 'one_to_one', 'events', 'communication'],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 45000,
+    maxMembers: null,
+    maxNodes: null,
+    features: ['meetings','attendance','referrals','one_to_one','events','activity_feed','networking','communication','analytics','automation','hierarchy','directory'],
+  },
+]
+
+export const invoices = [
+  {
+    id: 'inv-001',
+    tenantId: 'tenant-001',
+    communityName: 'BNI Mumbai Metro',
+    amount: 25000,
+    plan: 'professional',
+    period: 'June 2024',
+    dueDate: '2024-06-15',
+    paidDate: '2024-06-12',
+    status: 'paid',
+    invoiceNumber: 'CNP-2024-0045',
+    overdueDays: 0,
+  },
+  {
+    id: 'inv-002',
+    tenantId: 'tenant-001',
+    communityName: 'BNI Mumbai Metro',
+    amount: 25000,
+    plan: 'professional',
+    period: 'May 2024',
+    dueDate: '2024-05-15',
+    paidDate: '2024-05-10',
+    status: 'paid',
+    invoiceNumber: 'CNP-2024-0032',
+    overdueDays: 0,
+  },
+  {
+    id: 'inv-003',
+    tenantId: 'tenant-008',
+    communityName: 'Entrepreneurs Club',
+    amount: 12000,
+    plan: 'starter',
+    period: 'June 2024',
+    dueDate: '2024-06-15',
+    paidDate: null,
+    status: 'overdue',
+    invoiceNumber: 'CNP-2024-0046',
+    overdueDays: 30,
+  },
+  {
+    id: 'inv-004',
+    tenantId: 'tenant-003',
+    communityName: 'FICCI Gujarat',
+    amount: 25000,
+    plan: 'professional',
+    period: 'June 2024',
+    dueDate: '2024-06-30',
+    paidDate: null,
+    status: 'pending',
+    invoiceNumber: 'CNP-2024-0050',
+    overdueDays: 0,
+  },
+]
+
+export const mrrHistory = [
+  { month: 'Jan', mrr: 120000 },
+  { month: 'Feb', mrr: 145000 },
+  { month: 'Mar', mrr: 165000 },
+  { month: 'Apr', mrr: 195000 },
+  { month: 'May', mrr: 220000 },
+  { month: 'Jun', mrr: 240000 },
+]
+
+export const planDistribution = [
+  { name: 'Starter',      count: 3, value: 36000,  color: '#546E7A' },
+  { name: 'Professional', count: 6, value: 150000, color: '#028090' },
+  { name: 'Enterprise',   count: 3, value: 135000, color: '#1B3A6B' },
+]
