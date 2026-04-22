@@ -10,7 +10,7 @@ import useMasterSettingsStore from '../../store/masterSettingsStore'
 import { useLoading } from '../../hooks/useLoading'
 import { SkeletonLine } from '../../components/Skeleton'
 import Select from '../../components/Select'
-import CommunityTypeHierarchyBuilder from './settings/CommunityTypeHierarchyBuilder'
+import HierarchyWizardStep from './HierarchyWizardStep'
 
 // ── Branding helpers (mirrors TenantNew) ──────────────────────────────────────
 const FONTS = [
@@ -213,7 +213,7 @@ function BrandPreviewPanel({ branding }) {
     { id: 'splash', label: 'Splash', Icon: Layers     },
   ]
   return (
-    <div className="flex-shrink-0 sticky top-5" style={{ width: tab === 'web' ? 340 : 208 }}>
+    <div className="flex-shrink-0 sticky top-5" style={{ width: 340 }}>
       <div className="card p-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-primary">Live Preview</p>
@@ -241,7 +241,7 @@ const STEP_META = [
   { label: 'Community Details', desc: 'Name, type, CSA & plan'  },
   { label: 'Domain',            desc: 'Domain & SSL settings'   },
   { label: 'Branding',          desc: 'Logo, colors & identity' },
-  { label: 'Hierarchy',         desc: 'Org structure & levels'  },
+  { label: 'Hierarchy (optional)', desc: 'Org structure & levels'  },
   { label: 'App Build',         desc: 'iOS & Android settings'  },
   { label: 'Review & Save',     desc: 'Confirm your changes'    },
 ]
@@ -329,6 +329,10 @@ export default function TenantEdit() {
     getDefaultHierarchyForType(originalTenant?.type || 'professional_networking')
   )
   const [hierarchyBuilderVersion, setHierarchyBuilderVersion] = useState(1)
+  const [hierarchyStatus, setHierarchyStatus] = useState({ state: 'C', canProceed: true, requiresConfirm: false })
+  const [showProceedDialog, setShowProceedDialog] = useState(false)
+
+  const getScratchHierarchy = () => ({ levels: [{ id: 'l1', name: 'Level 1', color: '#028090' }], nodes: [] })
 
   useEffect(() => {
     setHierarchyTemplate(getDefaultHierarchyForType(formData.type))
@@ -372,6 +376,13 @@ export default function TenantEdit() {
 
   const handleNext = () => {
     if (step === 1 && !validateStep1()) return
+    if (step === 4) {
+      if (!hierarchyStatus.canProceed) return
+      if (hierarchyStatus.requiresConfirm) {
+        setShowProceedDialog(true)
+        return
+      }
+    }
     setStep(s => Math.min(s + 1, STEP_META.length))
   }
 
@@ -421,29 +432,31 @@ export default function TenantEdit() {
   return (
     <div className="p-3 flex flex-col bg-surface" style={{ minHeight: 'calc(100vh - 44px)' }}>
 
-      {/* ── Page header ── */}
-      <div className="flex items-center gap-2 px-5 py-2.5 bg-white border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-1.5 text-xs text-secondary">
-          <Link to="/admin/tenants" className="hover:text-teal transition-colors">Tenants</Link>
-          <ChevronRight size={11} />
-          <Link to={`/admin/tenants/${id}`} className="hover:text-teal transition-colors">{originalTenant.name}</Link>
-          <ChevronRight size={11} />
-          <span className="text-primary font-medium">Edit</span>
+      <div className="sticky top-0 z-30 bg-white">
+        {/* ── Page header ── */}
+        <div className="flex items-center gap-2 px-5 py-2.5 bg-white border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-secondary">
+            <Link to="/admin/tenants" className="hover:text-teal transition-colors">Tenants</Link>
+            <ChevronRight size={11} />
+            <Link to={`/admin/tenants/${id}`} className="hover:text-teal transition-colors">{originalTenant.name}</Link>
+            <ChevronRight size={11} />
+            <span className="text-primary font-medium">Edit</span>
+          </div>
+          <span className="text-border text-xs mx-0.5">|</span>
+          <h1 className="text-sm font-bold text-navy">Edit Tenant</h1>
         </div>
-        <span className="text-border text-xs mx-0.5">|</span>
-        <h1 className="text-sm font-bold text-navy">Edit Tenant</h1>
-      </div>
 
-      {/* ── Body ── */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Sidebar ── */}
-        <aside className="w-56 flex-shrink-0 bg-white border-r border-border flex flex-col">
-          <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-            <p className="text-2xs font-semibold uppercase tracking-widest text-secondary/50 px-3 pt-2 pb-3">Edit Steps</p>
+        <div className="bg-white border-b border-border px-5 py-2.5">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-2xs font-semibold uppercase tracking-widest text-secondary/60">Edit Steps</p>
+            <span className="text-2xs text-secondary">
+              Step {step} of {STEP_META.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             {STEP_META.map((s, i) => {
-              const num    = i + 1
-              const done   = num < step
+              const num = i + 1
+              const done = num < step
               const active = num === step
               return (
                 <button
@@ -451,38 +464,36 @@ export default function TenantEdit() {
                   type="button"
                   disabled={num > step}
                   onClick={() => done && setStep(num)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-button text-left transition-all
-                    ${active ? 'bg-teal/10 text-teal' : done ? 'text-secondary hover:bg-surface' : 'text-secondary/40 cursor-default'}`}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-button border text-left whitespace-nowrap transition-all
+                    ${active
+                      ? 'border-teal bg-teal/10'
+                      : done
+                      ? 'border-border hover:border-teal/30 hover:bg-surface'
+                      : 'border-border/60 opacity-60 cursor-default'}`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 transition-all
-                    ${active ? 'bg-teal border-teal text-white' : done ? 'bg-teal border-teal text-white' : 'bg-white border-border text-secondary/40'}`}>
-                    {done ? <Check size={11} /> : num}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold leading-tight ${active ? 'text-teal' : ''}`}>{s.label}</p>
-                    <p className="text-[10px] text-secondary/60 leading-tight mt-0.5 truncate">{s.desc}</p>
-                  </div>
+                  <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-semibold
+                    ${active || done ? 'bg-teal text-white' : 'bg-white border border-border text-secondary/70'}`}>
+                    {done ? <Check size={10} /> : num}
+                  </span>
+                  <span className={`text-xs font-medium ${active ? 'text-teal' : 'text-secondary'}`}>{s.label}</span>
                 </button>
               )
             })}
           </div>
-
-          {/* Progress */}
-          <div className="p-4 border-t border-border flex-shrink-0">
-            <div className="flex items-center justify-between text-[10px] text-secondary mb-1.5">
-              <span>Progress</span>
-              <span className="font-semibold">{Math.round(((step - 1) / STEP_META.length) * 100)}%</span>
-            </div>
-            <div className="h-1 bg-border rounded-full overflow-hidden">
-              <div className="h-full bg-teal rounded-full transition-all duration-500"
-                style={{ width: `${((step - 1) / STEP_META.length) * 100}%` }} />
-            </div>
+          <div className="h-1 bg-border rounded-full overflow-hidden mt-2">
+            <div
+              className="h-full bg-teal rounded-full transition-all duration-500"
+              style={{ width: `${((step - 1) / STEP_META.length) * 100}%` }}
+            />
           </div>
-        </aside>
+        </div>
+      </div>
 
+      {/* ── Body ── */}
+      <div className="flex flex-1 overflow-hidden">
         {/* ── Main content ── */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-5 max-w-4xl">
+          <div className="p-4 md:p-5 w-full">
 
             {/* ── STEP 1: Community Details ── */}
             {step === 1 && (
@@ -736,16 +747,18 @@ export default function TenantEdit() {
 
             {/* ── STEP 4: Hierarchy ── */}
             {step === 4 && (
-              <div className="card p-0 overflow-hidden">
-                <div className="h-[760px]">
-                  <CommunityTypeHierarchyBuilder
-                    key={`edit-${formData.type}-${hierarchyBuilderVersion}`}
-                    title={formData.name?.trim() || originalTenant.name}
-                    initialTemplate={hierarchyTemplate}
-                    onChange={setHierarchyTemplate}
-                  />
-                </div>
-              </div>
+              <HierarchyWizardStep
+                communityName={formData.name || originalTenant.name}
+                communityType={communityTypesList.find(c => c.slug === formData.type)}
+                csaName={formData.csaName}
+                isEditMode={true}
+                hierarchyTemplate={hierarchyTemplate}
+                onChange={setHierarchyTemplate}
+                onStatusChange={setHierarchyStatus}
+                getDefaultHierarchyForType={getDefaultHierarchyForType}
+                getScratchHierarchy={getScratchHierarchy}
+                builderKey={`edit-${formData.type}-${hierarchyBuilderVersion}`}
+              />
             )}
 
             {/* ── STEP 5: App Build ── */}
@@ -906,24 +919,83 @@ export default function TenantEdit() {
         </main>
       </div>
 
+      {/* ── Proceed without nodes dialog (edit mode) ── */}
+      {showProceedDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-sm font-bold text-primary mb-2">Proceed without nodes?</h3>
+            <p className="text-xs text-secondary mb-4">
+              You have defined {hierarchyTemplate?.levels?.length || 0} level{hierarchyTemplate?.levels?.length !== 1 ? 's' : ''} but no nodes yet.
+              You can add nodes anytime in the Hierarchy Builder at /admin/hierarchy.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => setShowProceedDialog(false)} className="btn btn-outline text-xs">
+                Go Back and Add Nodes
+              </button>
+              <button
+                onClick={() => { setShowProceedDialog(false); setStep(s => s + 1) }}
+                className="btn btn-primary text-xs"
+              >
+                Proceed Anyway — Add Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Sticky footer ── */}
-      <div className="flex-shrink-0 border-t border-border bg-white px-5 py-3 flex items-center justify-between">
-        <button className="btn btn-outline"
-          onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/admin/tenants')}>
-          ← {step === 1 ? 'Cancel' : 'Back'}
-        </button>
-        {step < STEP_META.length ? (
-          <button className="btn btn-primary" onClick={handleNext}>Next →</button>
-        ) : (
-          <button className="btn btn-primary flex items-center gap-2 min-w-[130px] justify-center" onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <><svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>Saving...</>
-            ) : 'Save Changes'}
-          </button>
+      <div className="sticky bottom-0 z-30 flex-shrink-0 border-t border-border bg-white">
+        {/* Hierarchy status bar */}
+        {step === 4 && (
+          <div className={`px-5 py-2 flex items-center justify-between text-xs border-b
+            ${hierarchyStatus.state === 'A' ? 'bg-red-50 border-red-100' : ''}
+            ${hierarchyStatus.state === 'B' ? 'bg-[#FFF8E1] border-amber-100' : ''}
+            ${hierarchyStatus.state === 'C' ? 'bg-white border-border' : ''}
+          `}>
+            <span className={`font-medium
+              ${hierarchyStatus.state === 'A' ? 'text-danger' : ''}
+              ${hierarchyStatus.state === 'B' ? 'text-amber-700' : ''}
+              ${hierarchyStatus.state === 'C' ? 'text-secondary' : ''}
+            `}>
+              {hierarchyStatus.state === 'A' && '⚠ Define at least one hierarchy level before proceeding'}
+              {hierarchyStatus.state === 'B' && '⚠ No nodes created yet. You can proceed and add nodes later in Hierarchy Builder.'}
+              {hierarchyStatus.state === 'C' && (
+                <>
+                  {formData.name || originalTenant.name} · {hierarchyTemplate?.levels?.length || 0} level{hierarchyTemplate?.levels?.length !== 1 ? 's' : ''} · {hierarchyTemplate?.nodes?.length || 0} nodes ·{' '}
+                  <span className="italic text-secondary/70 font-normal">Level Admins assigned after creation</span>
+                </>
+              )}
+            </span>
+            {hierarchyStatus.state === 'C' && (
+              <span className="text-success font-medium">Auto-saved ✓</span>
+            )}
+          </div>
         )}
+
+        <div className="px-5 py-3 flex items-center justify-between">
+          <button className="btn btn-outline"
+            onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/admin/tenants')}>
+            ← {step === 1 ? 'Cancel' : 'Back'}
+          </button>
+          {step < STEP_META.length ? (
+            <button
+              className={`btn ${step === 4 && !hierarchyStatus.canProceed ? 'btn-outline opacity-50 cursor-not-allowed' : 'btn-primary'}`}
+              onClick={handleNext}
+              disabled={step === 4 && !hierarchyStatus.canProceed}
+            >
+              Next →
+            </button>
+          ) : (
+            <button className="btn btn-primary flex items-center gap-2 min-w-[130px] justify-center" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <><svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>Saving...</>
+              ) : 'Save Changes'}
+            </button>
+          )}
+        </div>
       </div>
 
     </div>
